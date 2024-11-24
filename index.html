@@ -3,70 +3,150 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mapamundi Interactivo</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <title>Juego de Electrónica</title>
   <style>
-    #map {
-      height: 100vh;
-      width: 100%;
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    #game-area {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 800px;
+      height: 500px;
+      border: 2px solid #333;
+      position: relative;
+      background-color: #f9f9f9;
+    }
+
+    .component {
+      width: 100px;
+      height: 40px;
+      background-color: #ddd;
+      border: 1px solid #333;
+      border-radius: 5px;
+      display: inline-block;
+      margin: 10px;
+      cursor: grab;
+      text-align: center;
+      line-height: 40px;
+      font-weight: bold;
+    }
+
+    .dropzone {
+      width: 120px;
+      height: 50px;
+      background-color: #eee;
+      border: 2px dashed #888;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    #dropzone-battery {
+      left: 10%;
+    }
+
+    #dropzone-led {
+      left: 40%;
+    }
+
+    #dropzone-resistor {
+      left: 70%;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #check-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #check-button:hover {
+      background-color: #218838;
     }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-ajax/dist/leaflet.ajax.min.js"></script>
+  <h1>Juego de Electrónica: Conecta el Circuito</h1>
+  <p>Arrastra los componentes al lugar correcto para encender el LED.</p>
+  
+  <div id="game-area">
+    <div class="dropzone" id="dropzone-battery">Batería</div>
+    <div class="dropzone" id="dropzone-led">LED</div>
+    <div class="dropzone" id="dropzone-resistor">Resistencia</div>
+  </div>
+
+  <div>
+    <div class="component" draggable="true" id="battery">🔋 Batería</div>
+    <div class="component" draggable="true" id="led">💡 LED</div>
+    <div class="component" draggable="true" id="resistor">⚡ Resistencia</div>
+  </div>
+
+  <div id="status">Estado: Conecta el circuito</div>
+  <button id="check-button">Verificar Circuito</button>
+
   <script>
-    // Crear el mapa
-    const map = L.map('map').setView([20, 0], 2);
+    const components = document.querySelectorAll('.component');
+    const dropzones = document.querySelectorAll('.dropzone');
+    const status = document.getElementById('status');
+    const checkButton = document.getElementById('check-button');
 
-    // Capa base del mapa
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    let placedComponents = {
+      battery: false,
+      led: false,
+      resistor: false
+    };
 
-    // Cargar fronteras de países (GeoJSON)
-    const geojsonLayer = new L.GeoJSON.AJAX("https://datahub.io/core/geo-countries/r/countries.geojson", {
-      style: {
-        color: "#3388ff",
-        weight: 1,
-        fillOpacity: 0.2
-      },
-      onEachFeature: function (feature, layer) {
-        console.log("Cargando país:", feature.properties.ADMIN, "Código ISO:", feature.properties.ISO_A3);
-      }
-    }).addTo(map);
+    components.forEach(component => {
+      component.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text', e.target.id);
+      });
+    });
 
-    // Simular eventos de fallecimientos
-    function simulateDeath(countryCode) {
-      let found = false; // Bandera para verificar si se encontró el país
-      geojsonLayer.eachLayer(function (layer) {
-        if (layer.feature.properties.ISO_A3 === countryCode) {
-          found = true;
-          console.log("Resaltando país:", layer.feature.properties.ADMIN);
-          layer.setStyle({
-            fillColor: "red",
-            fillOpacity: 0.7
-          });
+    dropzones.forEach(dropzone => {
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
 
-          // Revertir el estilo después de 3 segundos
-          setTimeout(() => {
-            geojsonLayer.resetStyle(layer);
-          }, 3000);
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const componentId = e.dataTransfer.getData('text');
+        const draggedComponent = document.getElementById(componentId);
+
+        if (!dropzone.hasChildNodes()) {
+          dropzone.appendChild(draggedComponent);
+          placedComponents[componentId] = true;
         }
       });
-      if (!found) {
-        console.error("País no encontrado para el código:", countryCode);
-      }
-    }
+    });
 
-    // Simulación de datos: países al azar cada 5 segundos
-    const countries = ["USA", "BRA", "IND", "CHN", "FRA", "RUS", "ZAF"];
-    setInterval(() => {
-      const randomCountry = countries[Math.floor(Math.random() * countries.length)];
-      simulateDeath(randomCountry);
-    }, 5000);
+    checkButton.addEventListener('click', () => {
+      if (placedComponents.battery && placedComponents.led && placedComponents.resistor) {
+        status.textContent = '¡Circuito Completo! El LED está encendido.';
+        status.style.color = 'green';
+      } else {
+        status.textContent = 'El circuito no está completo. Verifica las conexiones.';
+        status.style.color = 'red';
+      }
+    });
   </script>
 </body>
 </html>
