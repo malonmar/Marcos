@@ -34,10 +34,11 @@
       border-radius: 5px;
       display: inline-block;
       margin: 10px;
-      cursor: grab;
       text-align: center;
       line-height: 40px;
       font-weight: bold;
+      position: absolute;
+      touch-action: none; /* Importante para dispositivos táctiles */
     }
 
     .dropzone {
@@ -92,12 +93,10 @@
     <div class="dropzone" id="dropzone-battery">Batería</div>
     <div class="dropzone" id="dropzone-led">LED</div>
     <div class="dropzone" id="dropzone-resistor">Resistencia</div>
-  </div>
 
-  <div>
-    <div class="component" draggable="true" id="battery">🔋 Batería</div>
-    <div class="component" draggable="true" id="led">💡 LED</div>
-    <div class="component" draggable="true" id="resistor">⚡ Resistencia</div>
+    <div class="component" id="battery" style="top: 400px; left: 50px;">🔋 Batería</div>
+    <div class="component" id="led" style="top: 400px; left: 200px;">💡 LED</div>
+    <div class="component" id="resistor" style="top: 400px; left: 350px;">⚡ Resistencia</div>
   </div>
 
   <div id="status">Estado: Conecta el circuito</div>
@@ -109,31 +108,57 @@
     const status = document.getElementById('status');
     const checkButton = document.getElementById('check-button');
 
-    let placedComponents = {
+    const placedComponents = {
       battery: false,
       led: false,
       resistor: false
     };
 
+    let draggedElement = null;
+
     components.forEach(component => {
-      component.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text', e.target.id);
-      });
-    });
-
-    dropzones.forEach(dropzone => {
-      dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
+      // Evento para iniciar el arrastre
+      component.addEventListener('pointerdown', (e) => {
+        draggedElement = component;
+        draggedElement.style.position = 'absolute';
+        draggedElement.style.zIndex = '1000';
       });
 
-      dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        const componentId = e.dataTransfer.getData('text');
-        const draggedComponent = document.getElementById(componentId);
+      // Evento para mover el componente
+      document.addEventListener('pointermove', (e) => {
+        if (draggedElement) {
+          draggedElement.style.top = `${e.clientY - 20}px`;
+          draggedElement.style.left = `${e.clientX - 50}px`;
+        }
+      });
 
-        if (!dropzone.hasChildNodes()) {
-          dropzone.appendChild(draggedComponent);
-          placedComponents[componentId] = true;
+      // Evento para soltar el componente
+      document.addEventListener('pointerup', (e) => {
+        if (draggedElement) {
+          let dropped = false;
+          dropzones.forEach(dropzone => {
+            const rect = dropzone.getBoundingClientRect();
+            if (
+              e.clientX > rect.left &&
+              e.clientX < rect.right &&
+              e.clientY > rect.top &&
+              e.clientY < rect.bottom
+            ) {
+              if (!dropzone.hasChildNodes()) {
+                dropzone.appendChild(draggedElement);
+                dropped = true;
+                placedComponents[draggedElement.id] = true;
+              }
+            }
+          });
+
+          // Si no se soltó en una zona válida, volver al lugar inicial
+          if (!dropped) {
+            draggedElement.style.top = '400px';
+            draggedElement.style.left = draggedElement.dataset.initialX + 'px';
+          }
+
+          draggedElement = null;
         }
       });
     });
